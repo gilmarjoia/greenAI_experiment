@@ -1,0 +1,6 @@
+[codecarbon]
+save_to_file = true
+output_dir = "YOUR output directory"
+measure_power_secs=10
+log_level = DEBUG
+tracking_mode = process
