@@ -181,6 +181,7 @@ def main() -> None:
             cwd=str(ROOT),
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
         if rp.stdout:
             for line in rp.stdout.splitlines():

@@ -1,0 +1,4 @@
+Baseline,Epochs,Train Loss,Val Loss,Top-1 Acc (%),Top-5 Acc (%),Train Time (min),Energy (kWh),Emissions (gCO₂),GPU Energy (kWh),CPU Energy (kWh),RAM Energy (kWh),Duration (s)
+YOLO26,10.0,0.42689,0.264,90.56,99.91,48.56,0.019593,1.927,0.004887,0.005907,0.0088,3165.85
+CNN,10.0,0.04193,0.2079,93.44,99.93,9.51,0.004045,0.3978,0.001115,0.001327,0.001603,576.29
+ViT (Transformers),10.0,0.02121,0.18363,94.97,99.94,99.23,0.103272,10.1566,0.02675,0.059944,0.016578,5967.29

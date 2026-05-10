@@ -16,8 +16,18 @@ Called automatically by main.py after all baselines finish.
 """
 
 import csv
+import sys
 from datetime import datetime
 from pathlib import Path
+
+# Force UTF-8 for console output to handle special characters like gCO₂
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # Fallback for very old Python versions or restricted environments
+        import io
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # ─── Baseline registry ────────────────────────────────────────────────────────
 ROOT = Path(__file__).parent
@@ -46,7 +56,7 @@ def _read_last_row(path: Path) -> dict | None:
     """Return the last data row of a CSV as a dict, or None if missing/empty."""
     if not path.exists():
         return None
-    with open(path, newline="") as f:
+    with open(path, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     return rows[-1] if rows else None
 
@@ -124,7 +134,7 @@ def write_csv(rows: list[dict], path: Path) -> None:
     """Write results to a machine-readable CSV."""
     if not rows:
         return
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
