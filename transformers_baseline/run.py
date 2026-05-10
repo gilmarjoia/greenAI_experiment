@@ -1,5 +1,5 @@
 """
-run.py — Entry point for the ViT/Transformers baseline experiment.
+run.py — Entry point for the Transformers baseline experiment.
 
 Orchestrates:
   1. Dataset loading  (tracked by CodeCarbon task 'load dataset')
@@ -26,17 +26,26 @@ from codecarbon import EmissionsTracker
 sys.path.insert(0, str(Path(__file__).parent))
 
 from dataset import get_dataloaders
-from model import ViTBaseline
+from model import TransformerBaseline
 from plots import plot_batch_images, plot_results
 from train import train
 
 
+import platform
+
 # ─── Hyperparameters (mirror CNN / YOLO26 where applicable) ──────────────────
+# On Windows, DataLoader uses 'spawn' multiprocessing. With 224×224 images the
+# per-batch pickle/unpickle overhead dominates when workers > 0.
+# Using 0 workers (main-process loading) is consistently faster on Windows
+# for datasets that are already cached on disk.
+_IS_WINDOWS = platform.system() == "Windows"
+_SAFE_WORKERS = 0 if _IS_WINDOWS else 8
+
 CONFIG = {
     # Data
     "batch": 16,
-    "workers": 8,
-    "imgsz": 224,          # ViT-B/16 requires 224×224
+    "workers": _SAFE_WORKERS,
+    "imgsz": 224,          # DeiT-Tiny requires 224×224
     "seed": 0,
     "num_classes": 10,
     # Optimisation
@@ -47,7 +56,7 @@ CONFIG = {
     "warmup_epochs": 3,
     "amp": True,
     # Model
-    "model_id": ViTBaseline.MODEL_ID,
+    "model_id": TransformerBaseline.MODEL_ID,
 }
 
 # ─── Output directories ───────────────────────────────────────────────────────
@@ -63,11 +72,19 @@ def main():
     np.random.seed(CONFIG["seed"])
     torch.manual_seed(CONFIG["seed"])
     torch.cuda.manual_seed_all(CONFIG["seed"])
-    torch.backends.cudnn.deterministic = True
+    # NOTE: cudnn.deterministic=True is intentionally NOT set for the ViT
+    # baseline. It forces slow non-deterministic-free cuDNN kernels and adds
+    # significant overhead on large attention layers. Reproducibility is
+    # already ensured by the fixed seed above.
+    torch.backends.cudnn.benchmark = True   # auto-tune fastest conv kernels
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-    print(f"Model: {CONFIG['model_id']}")
+    print(f"Using device : {device}")
+    if device.type == "cuda":
+        print(f"GPU          : {torch.cuda.get_device_name(0)}")
+        print(f"VRAM total   : {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+    print(f"Model        : {CONFIG['model_id']}")
+    print(f"Workers      : {CONFIG['workers']} ({'Windows-safe: main-process loading' if _IS_WINDOWS else 'multi-process'})")
 
     # Save config for evaluation.py
     args_path = TRAIN_DIR / "args.yaml"

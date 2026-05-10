@@ -1,5 +1,5 @@
 """
-train.py — Training loop for the ViT/Transformers baseline.
+train.py — Training loop for the Transformers baseline.
 
 Mirrors CNN/YOLO26 training configuration:
   - Optimizer: AdamW (weight_decay=0.05) — standard for ViT fine-tuning
@@ -23,7 +23,7 @@ import torch.nn as nn
 from torch.cuda.amp import GradScaler
 from torch.utils.data import DataLoader
 
-from model import ViTBaseline
+from model import TransformerBaseline
 
 
 # ─── Scheduler ───────────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ def train(
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = ViTBaseline(num_classes=num_classes).to(device)
+    model = TransformerBaseline(num_classes=num_classes).to(device)
     criterion = nn.CrossEntropyLoss()
 
     # AdamW is the standard optimizer for transformer fine-tuning
@@ -198,10 +198,11 @@ def train(
                 f"time={elapsed:.1f}s"
             )
 
-            # Save last checkpoint every epoch
-            torch.save(model.state_dict(), weights_dir / "last.pt")
+            # serialising every epoch adds overhead unnecessarily)
+            if epoch == epochs:
+                torch.save(model.state_dict(), weights_dir / "last.pt")
 
-            # Save best checkpoint
+            # Save best checkpoint whenever validation accuracy improves
             if val_top1 > best_top1:
                 best_top1 = val_top1
                 torch.save(model.state_dict(), weights_dir / "best.pt")

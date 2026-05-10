@@ -224,3 +224,6 @@ __marimo__/
 
 # Ignore .idea directory
 .idea
+
+# ignore datasets
+datasets

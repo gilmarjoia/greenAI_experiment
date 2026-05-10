@@ -1,0 +1,13 @@
+amp: true
+batch: 16
+dropout: 0.0
+epochs: 10
+imgsz: 28
+lr0: 0.01
+lrf: 0.01
+momentum: 0.937
+num_classes: 10
+seed: 0
+warmup_epochs: 3
+weight_decay: 0.0005
+workers: 8

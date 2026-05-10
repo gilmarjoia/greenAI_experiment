@@ -1,5 +1,5 @@
 """
-evaluation.py — Evaluation script for the ViT/Transformers baseline.
+evaluation.py — Evaluation script for the Transformers baseline.
 
 Follows CNN/YOLO26 guidelines:
   - Loads weights from output/runs/train/weights/best.pt
@@ -17,7 +17,7 @@ import yaml
 from codecarbon import EmissionsTracker
 
 from dataset import get_dataloaders
-from model import ViTBaseline
+from model import TransformerBaseline
 from plots import plot_batch_images, plot_confusion_matrices
 from train import run_epoch
 
@@ -80,7 +80,7 @@ def main():
         tracker.start_task("validate model")
 
         # Initialize model
-        model = ViTBaseline(num_classes=config["num_classes"]).to(device)
+        model = TransformerBaseline(num_classes=config["num_classes"]).to(device)
 
         # Load best weights
         weights_path = TRAIN_DIR / "weights" / "best.pt"

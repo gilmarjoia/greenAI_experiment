@@ -59,6 +59,7 @@ pydantic_core==2.46.4
 Pygments==2.20.0
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.2
 PyYAML==6.0.3
 questionary==2.1.1
 RapidFuzz==3.14.5
@@ -73,7 +74,7 @@ shellingham==1.5.4
 six==1.17.0
 sympy==1.14.0
 termcolor==3.3.0
-tokenizers==0.23.1
+tokenizers==0.22.2
 torch==2.11.0+cu126
 torchvision==0.26.0+cu126
 tqdm==4.67.3
