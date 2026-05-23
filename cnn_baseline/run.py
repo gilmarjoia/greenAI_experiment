@@ -13,6 +13,7 @@ Mirrors the YOLO26 / Transformers baseline experiment structure exactly:
   - CodeCarbon log   cnn_baseline/output/emissions.csv
 """
 
+import platform
 import random
 import sys
 from pathlib import Path
@@ -29,11 +30,14 @@ from dataset import get_dataloaders
 from plots import plot_batch_images, plot_results
 from train import train
 
+_IS_WINDOWS   = platform.system() == "Windows"
+_SAFE_WORKERS = 0 if _IS_WINDOWS else 8
+
 # ─── Hyperparameters (mirror YOLO26 where applicable) ────────────────────────
 CONFIG = {
     # Data
     "batch": 16,
-    "workers": 8,
+    "workers": _SAFE_WORKERS,
     "imgsz": 28,
     "seed": 0,
     "num_classes": 10,

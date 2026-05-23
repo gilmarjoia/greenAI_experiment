@@ -227,3 +227,6 @@ __marimo__/
 
 # ignore datasets
 datasets
+
+# Walkthrough artifact
+walkthrough.md

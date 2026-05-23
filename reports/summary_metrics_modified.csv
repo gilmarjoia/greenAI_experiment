@@ -1,0 +1,4 @@
+Model,Epochs,Train Loss,Val Loss,Top-1 Acc (%),Top-5 Acc (%),Train Time (min),Energy (kWh),Emissions (gCO₂),GPU Energy (kWh),CPU Energy (kWh),RAM Energy (kWh),Duration (s)
+YOLO26 Modified,20.0,0.348,0.22269,91.62,99.92,41.54,0.017802,1.7508,0.00462,0.006023,0.007159,2576.75
+CNN Modified,20.0,0.64971,0.65565,93.19,99.83,49.77,0.039048,3.8403,0.003952,0.026787,0.008308,2990.11
+ViT (Transformers) Modified,20.0,0.51631,0.64883,95.17,99.33,203.45,0.200333,19.7023,0.053759,0.112605,0.033968,12228.47
