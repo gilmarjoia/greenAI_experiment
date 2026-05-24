@@ -18,21 +18,21 @@ This report compares the initial training runs (Baseline) using default hyperpar
 
 ### 1. Accuracy and Validation Loss Comparison
 
-| Model | Baseline Epochs | Modified Epochs | Baseline Top-1 Acc | Modified Top-1 Acc | Accuracy Gain (Abs) | Baseline Val Loss | Modified Val Loss |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **YOLO26** | 10 | 20 | 90.56% | 91.62% | **+1.06%** | 0.2640 | 0.2227 |
-| **CNN** | 10 | 20 | 93.44% | 93.19% | -0.25% | 0.2079 | 0.6556 |
-| **ViT (Transformers)** | 10 | 20 | 94.97% | 95.17% | **+0.20%** | 0.1836 | 0.6488 |
+| Model                  | Baseline Epochs | Modified Epochs | Baseline Top-1 Acc | Modified Top-1 Acc | Accuracy Gain (Abs) | Baseline Val Loss | Modified Val Loss |
+|:-----------------------|:---------------:|:---------------:|:------------------:|:------------------:|:-------------------:|:-----------------:|:-----------------:|
+| **YOLO26**             |       10        |       20        |       90.56%       |       91.62%       |     **+1.06%**      |      0.2640       |      0.2227       |
+| **CNN**                |       10        |       20        |       93.44%       |       93.19%       |       -0.25%        |      0.2079       |      0.6556       |
+| **ViT (Transformers)** |       10        |       20        |       94.97%       |       95.17%       |     **+0.20%**      |      0.1836       |      0.6488       |
 
 *Note: In CNN and ViT, the modified validation loss appears higher. This is because **Label Smoothing (0.1)** was added, which targets soft class probabilities rather than hard one-hot labels, smoothing out the loss calculation and raising the nominal CrossEntropy Loss value even as actual classification accuracy holds or improves.*
 
 ### 2. Environmental and Computational Footprint Comparison
 
-| Model | Baseline Time | Modified Time | Duration Delta | Baseline Emissions | Modified Emissions | Carbon Delta (gCO₂) | Carbon Delta (%) |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **YOLO26** | 48.56 m | 41.54 m | -7.02 m (-14.5%) | 1.927 g | 1.751 g | **-0.176 g** | **-9.1%** |
-| **CNN** | 9.51 m | 49.77 m | +40.26 m (+423.3%) | 0.398 g | 3.840 g | +3.442 g | +865.4% |
-| **ViT (Transformers)** | 99.23 m | 203.45 m | +104.22 m (+105.0%) | 10.157 g | 19.702 g | +9.546 g | +94.0% |
+| Model                  | Baseline Time | Modified Time |   Duration Delta    | Baseline Emissions | Modified Emissions | Carbon Delta (gCO₂) | Carbon Delta (%) |
+|:-----------------------|:-------------:|:-------------:|:-------------------:|:------------------:|:------------------:|:-------------------:|:----------------:|
+| **YOLO26**             |    48.56 m    |    41.54 m    |  -7.02 m (-14.5%)   |      1.927 g       |      1.751 g       |    **-0.176 g**     |    **-9.1%**     |
+| **CNN**                |    9.51 m     |    49.77 m    | +40.26 m (+423.3%)  |      0.398 g       |      3.840 g       |      +3.442 g       |     +865.4%      |
+| **ViT (Transformers)** |    99.23 m    |   203.45 m    | +104.22 m (+105.0%) |      10.157 g      |      19.702 g      |      +9.546 g       |      +94.0%      |
 
 ---
 
