@@ -1,0 +1,4 @@
+Model,Epochs,Train Loss,Val Loss,Top-1 Acc (%),Top-5 Acc (%),Train Time (min),Energy (kWh),Emissions (gCO₂),GPU Energy (kWh),CPU Energy (kWh),RAM Energy (kWh),Duration (s)
+YOLO26 Round 3,30.0,0.33232,0.21692,91.74,99.93,109.79,0.039193,3.8546,0.009833,0.010661,0.0187,6731.53
+CNN Round 3,30.0,0.61377,0.64317,93.96,99.84,227.71,0.155015,15.2454,0.006657,0.110392,0.037965,13666.76
+ViT (Transformers) Round 3,30.0,0.28735,0.46722,95.18,99.13,365.59,0.325459,32.0082,0.069511,0.194995,0.060952,21942.21

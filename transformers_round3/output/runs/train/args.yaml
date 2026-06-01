@@ -1,0 +1,14 @@
+amp: true
+batch: 32
+epochs: 30
+grad_clip_norm: 1.0
+imgsz: 224
+label_smoothing: 0.05
+lr0: 8.0e-05
+lrf: 0.02
+model_id: facebook/deit-tiny-patch16-224
+num_classes: 10
+seed: 0
+warmup_epochs: 5
+weight_decay: 0.05
+workers: 0
