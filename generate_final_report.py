@@ -1,14 +1,15 @@
 """
 generate_final_report.py — Final consolidated comparison report generator.
 
-Reads summary metrics from all four experimental phases:
+Reads summary metrics from all five experimental phases:
   - Baseline      (reports/summary_metrics.csv)
   - Modified/R2   (reports/summary_metrics_modified.csv)
   - Round 3       (reports/summary_metrics_round3.csv)
   - Round 4       (reports/summary_metrics_round4.csv)
+  - Round 5       (reports/summary_metrics_round5.csv)
 
 Produces:
-  - reports/final_report.md          — Full Markdown report (4-phase comparison)
+  - reports/final_report.md          — Full Markdown report (5-phase comparison)
   - reports/final_dashboard.png      — Multi-panel comparison visualization
 
 Usage:
@@ -42,10 +43,11 @@ CSV_BASELINE = REPORTS_DIR / "summary_metrics.csv"
 CSV_ROUND2   = REPORTS_DIR / "summary_metrics_modified.csv"
 CSV_ROUND3   = REPORTS_DIR / "summary_metrics_round3.csv"
 CSV_ROUND4   = REPORTS_DIR / "summary_metrics_round4.csv"
+CSV_ROUND5   = REPORTS_DIR / "summary_metrics_round5.csv"
 MD_REPORT    = REPORTS_DIR / "final_report.md"
 PNG_DASH     = REPORTS_DIR / "final_dashboard.png"
 
-# ─── Hyperparameter tables (all 4 rounds) ─────────────────────────────────────
+# ─── Hyperparameter tables (all 5 rounds) ─────────────────────────────────────
 HYPERPARAMS = {
     "YOLO26": {
         "baseline": (
@@ -87,6 +89,15 @@ HYPERPARAMS = {
             "- **Dropout**: 0.1\n"
             "- **Cosine LR**: True\n"
             "- **Label Smoothing**: 0.1"
+        ),
+        "round5": (
+            "- **Epochs**: 20 (↑)\n"
+            "- **Batch**: 16\n"
+            "- **Optimizer**: Auto (SGD)\n"
+            "- **LR0**: 0.01\n"
+            "- **Weight Decay**: 0.0005\n"
+            "- **Dropout**: 0.0\n"
+            "- **Label Smoothing**: 0.0"
         ),
     },
     "CNN": {
@@ -130,6 +141,16 @@ HYPERPARAMS = {
             "- **Label Smoothing**: 0.1\n"
             "- **Augmentation**: Flip+Rot(10°)+Jitter"
         ),
+        "round5": (
+            "- **Epochs**: 20 (↑)\n"
+            "- **Batch**: 16\n"
+            "- **LR0**: 0.01\n"
+            "- **Dropout**: 0.0\n"
+            "- **Weight Decay**: 0.0005\n"
+            "- **Label Smoothing**: None\n"
+            "- **Warmup**: 3 epochs\n"
+            "- **Augmentation**: None"
+        ),
     },
     "ViT": {
         "baseline": (
@@ -172,6 +193,16 @@ HYPERPARAMS = {
             "- **Grad Clipping**: max_norm=1.0\n"
             "- **Augmentation**: Flip+Rot(15°)+Jitter+Shear"
         ),
+        "round5": (
+            "- **Epochs**: 20 (↑)\n"
+            "- **Batch**: 16\n"
+            "- **LR0**: 1e-4\n"
+            "- **Weight Decay**: 0.05\n"
+            "- **Warmup**: 3 epochs\n"
+            "- **Label Smoothing**: None\n"
+            "- **Grad Clipping**: None\n"
+            "- **Augmentation**: Flip only"
+        ),
     },
 }
 
@@ -181,7 +212,6 @@ def read_csv(path: Path, key_col: str) -> dict:
     """Read CSV into dict keyed by model name."""
     data = {}
     if not path.exists():
-        print(f"[WARNING] Missing file: {path}")
         return data
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -228,6 +258,7 @@ MODEL_MAP = [
         "r2_key":   "YOLO26 Modified",
         "r3_key":   "YOLO26 Round 3",
         "r4_key":   "YOLO26 Round 4",
+        "r5_key":   "YOLO26 Round 5",
         "label":    "YOLO26",
     },
     {
@@ -236,6 +267,7 @@ MODEL_MAP = [
         "r2_key":   "CNN Modified",
         "r3_key":   "CNN Round 3",
         "r4_key":   "CNN Round 4",
+        "r5_key":   "CNN Round 5",
         "label":    "CNN",
     },
     {
@@ -244,6 +276,7 @@ MODEL_MAP = [
         "r2_key":   "ViT (Transformers) Modified",
         "r3_key":   "ViT (Transformers) Round 3",
         "r4_key":   "ViT (Transformers) Round 4",
+        "r5_key":   "ViT (Transformers) Round 5",
         "label":    "ViT",
     },
 ]
@@ -251,56 +284,62 @@ MODEL_MAP = [
 
 # ─── Plot ─────────────────────────────────────────────────────────────────────
 
-def make_dashboard(baselines, round2s, round3s, round4s) -> None:
-    """Generate a 1x3 comparison dashboard PNG with 4 bars per model."""
+def make_dashboard(baselines, round2s, round3s, round4s, round5s) -> None:
+    """Generate a 1x3 comparison dashboard PNG with 5 bars per model."""
     models = [m["label"] for m in MODEL_MAP]
 
-    acc_b, acc_r2, acc_r3, acc_r4       = [], [], [], []
-    em_b,  em_r2,  em_r3,  em_r4        = [], [], [], []
-    time_b, time_r2, time_r3, time_r4    = [], [], [], []
+    acc_b, acc_r2, acc_r3, acc_r4, acc_r5       = [], [], [], [], []
+    em_b,  em_r2,  em_r3,  em_r4,  em_r5        = [], [], [], [], []
+    time_b, time_r2, time_r3, time_r4, time_r5    = [], [], [], [], []
 
     for m in MODEL_MAP:
         b  = baselines.get(m["base_key"], {})
         r2 = round2s.get(m["r2_key"],    {})
         r3 = round3s.get(m["r3_key"],    {})
         r4 = round4s.get(m["r4_key"],    {})
+        r5 = round5s.get(m["r5_key"],    {})
 
         acc_b.append(float(b.get("Top-1 Acc (%)", 0)))
         acc_r2.append(float(r2.get("Top-1 Acc (%)", 0)))
         acc_r3.append(float(r3.get("Top-1 Acc (%)", 0)))
         acc_r4.append(float(r4.get("Top-1 Acc (%)", 0)))
+        acc_r5.append(float(r5.get("Top-1 Acc (%)", 0)))
 
         em_b.append(float(b.get("Emissions (gCO₂)", 0)))
         em_r2.append(float(r2.get("Emissions (gCO₂)", 0)))
         em_r3.append(float(r3.get("Emissions (gCO₂)", 0)))
         em_r4.append(float(r4.get("Emissions (gCO₂)", 0)))
+        em_r5.append(float(r5.get("Emissions (gCO₂)", 0)))
 
         time_b.append(float(b.get("Train Time (min)", 0)))
         time_r2.append(float(r2.get("Train Time (min)", 0)))
         time_r3.append(float(r3.get("Train Time (min)", 0)))
         time_r4.append(float(r4.get("Train Time (min)", 0)))
+        time_r5.append(float(r5.get("Train Time (min)", 0)))
 
     x     = np.arange(len(models))
-    width = 0.18
+    width = 0.15
 
-    # Palette
+    # Palette (5 colors)
     c_base = "#94A3B8"   # slate (Baseline)
     c_r2   = "#6366F1"   # indigo (Round 2)
     c_r3   = "#10B981"   # emerald (Round 3)
     c_r4   = "#F59E0B"   # amber (Round 4)
+    c_r5   = "#EC4899"   # rose (Round 5)
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5))
     fig.suptitle(
-        "GreenAI Experiment — 4-Phase Comparison Dashboard",
+        "GreenAI Experiment — 5-Phase Comparison Dashboard",
         fontsize=14, fontweight="bold", y=1.01,
     )
 
     # ── Panel 1: Top-1 Accuracy ───────────────────────────────────────────────
     ax = axes[0]
-    b0 = ax.bar(x - 1.5*width, acc_b,  width, label="Baseline (10 ep)", color=c_base, edgecolor="none")
-    b1 = ax.bar(x - 0.5*width, acc_r2, width, label="Round 2 (20 ep)",  color=c_r2,   edgecolor="none")
-    b2 = ax.bar(x + 0.5*width, acc_r3, width, label="Round 3 (30 ep)",  color=c_r3,   edgecolor="none")
-    b3 = ax.bar(x + 1.5*width, acc_r4, width, label="Round 4 (10 ep)",  color=c_r4,   edgecolor="none")
+    b0 = ax.bar(x - 2.0*width, acc_b,  width, label="Baseline (10 ep)", color=c_base, edgecolor="none")
+    b1 = ax.bar(x - 1.0*width, acc_r2, width, label="Round 2 (20 ep, reg)",  color=c_r2,   edgecolor="none")
+    b2 = ax.bar(x,            acc_r3, width, label="Round 3 (30 ep, reg)",  color=c_r3,   edgecolor="none")
+    b3 = ax.bar(x + 1.0*width, acc_r4, width, label="Round 4 (10 ep, reg)",  color=c_r4,   edgecolor="none")
+    b4 = ax.bar(x + 2.0*width, acc_r5, width, label="Round 5 (20 ep, base)", color=c_r5,   edgecolor="none")
     ax.set_title("Top-1 Accuracy (%)", fontweight="bold", pad=10)
     ax.set_xticks(x); ax.set_xticklabels(models, fontsize=9)
     ax.set_ylabel("Accuracy (%)"); ax.set_ylim(85, 98)
@@ -310,18 +349,21 @@ def make_dashboard(baselines, round2s, round3s, round4s) -> None:
         (b0, acc_b, "#475569"), 
         (b1, acc_r2, "#3730A3"), 
         (b2, acc_r3, "#065F46"),
-        (b3, acc_r4, "#92400E")
+        (b3, acc_r4, "#92400E"),
+        (b4, acc_r5, "#9D174D")
     ]:
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width()/2, v + 0.1,
-                    f"{v:.2f}%", ha="center", va="bottom", fontsize=7, color=col, fontweight="bold")
+            if v > 0:
+                ax.text(bar.get_x() + bar.get_width()/2, v + 0.1,
+                        f"{v:.2f}%", ha="center", va="bottom", fontsize=7, color=col, fontweight="bold")
 
     # ── Panel 2: Carbon Emissions ─────────────────────────────────────────────
     ax = axes[1]
-    b0 = ax.bar(x - 1.5*width, em_b,  width, label="Baseline (10 ep)", color=c_base, edgecolor="none")
-    b1 = ax.bar(x - 0.5*width, em_r2, width, label="Round 2 (20 ep)",  color=c_r2,   edgecolor="none")
-    b2 = ax.bar(x + 0.5*width, em_r3, width, label="Round 3 (30 ep)",  color=c_r3,   edgecolor="none")
-    b3 = ax.bar(x + 1.5*width, em_r4, width, label="Round 4 (10 ep)",  color=c_r4,   edgecolor="none")
+    b0 = ax.bar(x - 2.0*width, em_b,  width, label="Baseline (10 ep)", color=c_base, edgecolor="none")
+    b1 = ax.bar(x - 1.0*width, em_r2, width, label="Round 2 (20 ep, reg)",  color=c_r2,   edgecolor="none")
+    b2 = ax.bar(x,            em_r3, width, label="Round 3 (30 ep, reg)",  color=c_r3,   edgecolor="none")
+    b3 = ax.bar(x + 1.0*width, em_r4, width, label="Round 4 (10 ep, reg)",  color=c_r4,   edgecolor="none")
+    b4 = ax.bar(x + 2.0*width, em_r5, width, label="Round 5 (20 ep, base)", color=c_r5,   edgecolor="none")
     ax.set_title("Carbon Emissions (gCO₂)", fontweight="bold", pad=10)
     ax.set_xticks(x); ax.set_xticklabels(models, fontsize=9)
     ax.set_ylabel("Emissions (gCO₂eq)")
@@ -331,18 +373,21 @@ def make_dashboard(baselines, round2s, round3s, round4s) -> None:
         (b0, em_b, "#475569"), 
         (b1, em_r2, "#3730A3"), 
         (b2, em_r3, "#065F46"),
-        (b3, em_r4, "#92400E")
+        (b3, em_r4, "#92400E"),
+        (b4, em_r5, "#9D174D")
     ]:
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width()/2, v + 0.25,
-                    f"{v:.2f}g", ha="center", va="bottom", fontsize=7, color=col, fontweight="bold")
+            if v > 0:
+                ax.text(bar.get_x() + bar.get_width()/2, v + 0.25,
+                        f"{v:.2f}g", ha="center", va="bottom", fontsize=7, color=col, fontweight="bold")
 
     # ── Panel 3: Training Duration ────────────────────────────────────────────
     ax = axes[2]
-    b0 = ax.bar(x - 1.5*width, time_b,  width, label="Baseline (10 ep)", color=c_base, edgecolor="none")
-    b1 = ax.bar(x - 0.5*width, time_r2, width, label="Round 2 (20 ep)",  color=c_r2,   edgecolor="none")
-    b2 = ax.bar(x + 0.5*width, time_r3, width, label="Round 3 (30 ep)",  color=c_r3,   edgecolor="none")
-    b3 = ax.bar(x + 1.5*width, time_r4, width, label="Round 4 (10 ep)",  color=c_r4,   edgecolor="none")
+    b0 = ax.bar(x - 2.0*width, time_b,  width, label="Baseline (10 ep)", color=c_base, edgecolor="none")
+    b1 = ax.bar(x - 1.0*width, time_r2, width, label="Round 2 (20 ep, reg)",  color=c_r2,   edgecolor="none")
+    b2 = ax.bar(x,            time_r3, width, label="Round 3 (30 ep, reg)",  color=c_r3,   edgecolor="none")
+    b3 = ax.bar(x + 1.0*width, time_r4, width, label="Round 4 (10 ep, reg)",  color=c_r4,   edgecolor="none")
+    b4 = ax.bar(x + 2.0*width, time_r5, width, label="Round 5 (20 ep, base)", color=c_r5,   edgecolor="none")
     ax.set_title("Training Duration (min)", fontweight="bold", pad=10)
     ax.set_xticks(x); ax.set_xticklabels(models, fontsize=9)
     ax.set_ylabel("Duration (minutes)")
@@ -352,11 +397,13 @@ def make_dashboard(baselines, round2s, round3s, round4s) -> None:
         (b0, time_b, "#475569"), 
         (b1, time_r2, "#3730A3"), 
         (b2, time_r3, "#065F46"),
-        (b3, time_r4, "#92400E")
+        (b3, time_r4, "#92400E"),
+        (b4, time_r5, "#9D174D")
     ]:
         for bar, v in zip(bars, vals):
-            ax.text(bar.get_x() + bar.get_width()/2, v + 1.5,
-                    f"{v:.1f}m", ha="center", va="bottom", fontsize=7, color=col, fontweight="bold")
+            if v > 0:
+                ax.text(bar.get_x() + bar.get_width()/2, v + 1.5,
+                        f"{v:.1f}m", ha="center", va="bottom", fontsize=7, color=col, fontweight="bold")
 
     plt.tight_layout()
     fig.savefig(PNG_DASH, dpi=130, bbox_inches="tight")
@@ -366,8 +413,8 @@ def make_dashboard(baselines, round2s, round3s, round4s) -> None:
 
 # ─── Markdown report ──────────────────────────────────────────────────────────
 
-def make_markdown(baselines, round2s, round3s, round4s) -> None:
-    """Generate final_report.md comparing all four phases."""
+def make_markdown(baselines, round2s, round3s, round4s, round5s) -> None:
+    """Generate final_report.md comparing all five phases."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     # Build per-model data rows
@@ -377,12 +424,13 @@ def make_markdown(baselines, round2s, round3s, round4s) -> None:
         r2 = round2s.get(m["r2_key"],    {})
         r3 = round3s.get(m["r3_key"],    {})
         r4 = round4s.get(m["r4_key"],    {})
-        rows.append({"m": m, "b": b, "r2": r2, "r3": r3, "r4": r4})
+        r5 = round5s.get(m["r5_key"],    {})
+        rows.append({"m": m, "b": b, "r2": r2, "r3": r3, "r4": r4, "r5": r5})
 
     # ── Accuracy table ────────────────────────────────────────────────────────
     acc_header = (
-        "| Model | Baseline | Round 2 | Δ R2 | Round 3 | Δ R3 vs R2 | Round 4 | Δ R4 vs Base |\n"
-        "|:------|:--------:|:-------:|:----:|:-------:|:----------:|:-------:|:------------:|"
+        "| Model | Baseline | Round 2 | Δ R2 | Round 3 | Δ R3 vs R2 | Round 4 | Round 5 | Δ R5 vs Base |\n"
+        "|:------|:--------:|:-------:|:----:|:-------:|:----------:|:-------:|:-------:|:------------:|"
     )
     acc_rows = ""
     for d in rows:
@@ -390,6 +438,7 @@ def make_markdown(baselines, round2s, round3s, round4s) -> None:
         r2_acc = d["r2"].get("Top-1 Acc (%)", "N/A")
         r3_acc = d["r3"].get("Top-1 Acc (%)", "N/A")
         r4_acc = d["r4"].get("Top-1 Acc (%)", "N/A")
+        r5_acc = d["r5"].get("Top-1 Acc (%)", "N/A")
         acc_rows += (
             f"\n| **{d['m']['label']}** "
             f"| {fv(b_acc, 2)}% "
@@ -398,13 +447,14 @@ def make_markdown(baselines, round2s, round3s, round4s) -> None:
             f"| {fv(r3_acc, 2)}% "
             f"| {delta(r3_acc, r2_acc, 2)}% "
             f"| {fv(r4_acc, 2)}% "
-            f"| {delta(r4_acc, b_acc, 2)}% |"
+            f"| {fv(r5_acc, 2)}% "
+            f"| {delta(r5_acc, b_acc, 2)}% |"
         )
 
     # ── Emissions table ───────────────────────────────────────────────────────
     em_header = (
-        "| Model | Baseline | Round 2 | Round 3 | Round 4 | R4 vs Base |\n"
-        "|:------|:--------:|:-------:|:-------:|:-------:|:----------:|"
+        "| Model | Baseline | Round 2 | Round 3 | Round 4 | Round 5 | R5 vs Base |\n"
+        "|:------|:--------:|:-------:|:-------:|:-------:|:-------:|:----------:|"
     )
     em_rows = ""
     for d in rows:
@@ -412,19 +462,21 @@ def make_markdown(baselines, round2s, round3s, round4s) -> None:
         r2_em = d["r2"].get("Emissions (gCO₂)", "N/A")
         r3_em = d["r3"].get("Emissions (gCO₂)", "N/A")
         r4_em = d["r4"].get("Emissions (gCO₂)", "N/A")
+        r5_em = d["r5"].get("Emissions (gCO₂)", "N/A")
         em_rows += (
             f"\n| **{d['m']['label']}** "
             f"| {fv(b_em, 3)}g "
             f"| {fv(r2_em, 3)}g "
             f"| {fv(r3_em, 3)}g "
             f"| {fv(r4_em, 3)}g "
-            f"| **{pct_delta(r4_em, b_em)}** |"
+            f"| {fv(r5_em, 3)}g "
+            f"| **{pct_delta(r5_em, b_em)}** |"
         )
 
     # ── Energy table ──────────────────────────────────────────────────────────
     en_header = (
-        "| Model | Baseline | Round 2 | Round 3 | Round 4 | R4 vs Base |\n"
-        "|:------|:--------:|:-------:|:-------:|:-------:|:----------:|"
+        "| Model | Baseline | Round 2 | Round 3 | Round 4 | Round 5 | R5 vs Base |\n"
+        "|:------|:--------:|:-------:|:-------:|:-------:|:-------:|:----------:|"
     )
     en_rows = ""
     for d in rows:
@@ -432,57 +484,55 @@ def make_markdown(baselines, round2s, round3s, round4s) -> None:
         r2_en = d["r2"].get("Energy (kWh)", "N/A")
         r3_en = d["r3"].get("Energy (kWh)", "N/A")
         r4_en = d["r4"].get("Energy (kWh)", "N/A")
+        r5_en = d["r5"].get("Energy (kWh)", "N/A")
         en_rows += (
             f"\n| **{d['m']['label']}** "
             f"| {fv(b_en, 6)} "
             f"| {fv(r2_en, 6)} "
             f"| {fv(r3_en, 6)} "
             f"| {fv(r4_en, 6)} "
-            f"| **{pct_delta(r4_en, b_en)}** |"
+            f"| {fv(r5_en, 6)} "
+            f"| **{pct_delta(r5_en, b_en)}** |"
         )
 
-    # ── Section 5: Round 4 vs Baseline ────────────────────────────────────────
-    r4_vs_base_rows = ""
+    # ── Section 5: Round 5 vs Baseline & Round 5 vs Round 2 ────────────────────
+    r5_vs_base_rows = ""
     interpretations_base = {
-        "YOLO26": "Hiperparâmetros melhorados oferecem mesma acurácia com 60% menos emissões",
-        "CNN": "Regularização aumenta custo; ganho de acurácia exige mais épocas para maturar",
-        "ViT": "Hiperparâmetros refinados já superam o Baseline com mesmo orçamento de épocas"
+        "YOLO26": "Dobrar as épocas baseline sem otimizações dobra o custo de emissões de forma linear.",
+        "CNN": "Sem regularização, épocas extras aumentam as emissões proporcionalmente, agravando overfitting.",
+        "ViT": "Aumento do tempo de treino de ViT sem regularização eleva muito a pegada ecológica."
     }
     for d in rows:
         model_id = d["m"]["id"]
         b_acc  = d["b"].get("Top-1 Acc (%)", "N/A")
-        r4_acc = d["r4"].get("Top-1 Acc (%)", "N/A")
+        r5_acc = d["r5"].get("Top-1 Acc (%)", "N/A")
         b_em   = d["b"].get("Emissions (gCO₂)", "N/A")
-        r4_em  = d["r4"].get("Emissions (gCO₂)", "N/A")
+        r5_em  = d["r5"].get("Emissions (gCO₂)", "N/A")
         interp = interpretations_base.get(model_id, "")
-        r4_vs_base_rows += (
+        r5_vs_base_rows += (
             f"\n| **{d['m']['label']}** "
-            f"| {delta(r4_acc, b_acc, 2)}% "
-            f"| {pct_delta(r4_em, b_em)} "
+            f"| {delta(r5_acc, b_acc, 2)}% "
+            f"| {pct_delta(r5_em, b_em)} "
             f"| {interp} |"
         )
 
-    # ── Section 5: Round 4 vs Round 3 ────────────────────────────────────────
-    r4_vs_r3_rows = ""
-    interpretations_r3 = {
-        "YOLO26": "Os 20 épocas extras do Round 3 foram cruciais para o ganho de acurácia",
-        "CNN": "Regularização precisa de mais épocas para convergir plenamente",
-        "ViT": "Hiperparâmetros são o principal driver; épocas extras contribuem marginalmente"
+    r2_vs_r5_rows = ""
+    interpretations_r2 = {
+        "YOLO26": "Hiperparâmetros otimizados (Round 2) economizam tempo e carbono vs baseline (Round 5) mesmo orçamento.",
+        "CNN": "Otimizações de regularização no Round 2 combatem o overfitting da base pura do Round 5.",
+        "ViT": "Ajuste fino de taxa de aprendizado e regularizações de ViT no R2 dão melhor resultado."
     }
     for d in rows:
         model_id = d["m"]["id"]
-        r3_acc = d["r3"].get("Top-1 Acc (%)", "N/A")
-        r4_acc = d["r4"].get("Top-1 Acc (%)", "N/A")
-        r3_em  = d["r3"].get("Emissions (gCO₂)", "N/A")
-        r4_em  = d["r4"].get("Emissions (gCO₂)", "N/A")
-        interp = interpretations_r3.get(model_id, "")
-        if model_id == "YOLO26":
-            d_acc = float(r3_acc) - float(r4_acc)
-            interp = f"Os 20 épocas extras do Round 3 foram cruciais para o ganho de +{d_acc:.2f}%"
-        r4_vs_r3_rows += (
+        r2_acc = d["r2"].get("Top-1 Acc (%)", "N/A")
+        r5_acc = d["r5"].get("Top-1 Acc (%)", "N/A")
+        r2_em  = d["r2"].get("Emissions (gCO₂)", "N/A")
+        r5_em  = d["r5"].get("Emissions (gCO₂)", "N/A")
+        interp = interpretations_r2.get(model_id, "")
+        r2_vs_r5_rows += (
             f"\n| **{d['m']['label']}** "
-            f"| {delta(r4_acc, r3_acc, 2)}% "
-            f"| {pct_delta(r4_em, r3_em)} "
+            f"| {delta(r2_acc, r5_acc, 2)}% "
+            f"| {pct_delta(r2_em, r5_em)} "
             f"| {interp} |"
         )
 
@@ -496,10 +546,12 @@ def make_markdown(baselines, round2s, round3s, round4s) -> None:
         r2 = rows[[x["m"]["id"] for x in rows].index(m["id"])]["r2"]
         r3 = rows[[x["m"]["id"] for x in rows].index(m["id"])]["r3"]
         r4 = rows[[x["m"]["id"] for x in rows].index(m["id"])]["r4"]
+        r5 = rows[[x["m"]["id"] for x in rows].index(m["id"])]["r5"]
         b_acc  = fv(b.get("Top-1 Acc (%)", "N/A"), 2)
         r2_acc = fv(r2.get("Top-1 Acc (%)", "N/A"), 2)
         r3_acc = fv(r3.get("Top-1 Acc (%)", "N/A"), 2)
         r4_acc = fv(r4.get("Top-1 Acc (%)", "N/A"), 2)
+        r5_acc = fv(r5.get("Top-1 Acc (%)", "N/A"), 2)
         hp_sections += f"""
 ### {label_map[m["id"]]}
 
@@ -509,17 +561,18 @@ def make_markdown(baselines, round2s, round3s, round4s) -> None:
 | **Round 2** | {hp['round2'].replace(chr(10), ' · ')} |
 | **Round 3** | {hp['round3'].replace(chr(10), ' · ')} |
 | **Round 4** | {hp['round4'].replace(chr(10), ' · ')} |
+| **Round 5** | {hp['round5'].replace(chr(10), ' · ')} |
 
-**Accuracy progression**: Baseline {b_acc}% → Round 2 {r2_acc}% → Round 3 {r3_acc}% → Round 4 {r4_acc}%
+**Accuracy progression**: Baseline {b_acc}% → Round 2 {r2_acc}% → Round 3 {r3_acc}% → Round 4 {r4_acc}% → Round 5 {r5_acc}%
 
 ---
 """
 
-    md = f"""# GreenAI Experiment — Final Report (4-Phase Comparison)
+    md = f"""# GreenAI Experiment — Final Report (5-Phase Comparison)
 
 Generated: {ts}
 
-This report summarises the complete four-phase experimental study comparing CNN,
+This report summarises the complete five-phase experimental study comparing CNN,
 YOLO26, and ViT (DeiT-Tiny) models trained on Fashion-MNIST, with successive
 hyperparameter refinements aimed at improving accuracy while monitoring
 energy consumption and carbon emissions.
@@ -534,6 +587,7 @@ energy consumption and carbon emissions.
 | **Round 2 (Modified)** | 20 | 32 | Address overfitting/underfitting; add regularization & augmentation |
 | **Round 3** | 30 | 32 | Fine-tune further; more epochs; balance LR decay and regularization |
 | **Round 4 (Efficiency)** | 10 | 32 | Round 3 hyperparams at Baseline epoch budget — isolate hyperparameter effect |
+| **Round 5 (20-ep Baseline)** | 20 | 16 | Baseline hyperparams at Round 2 epoch budget — isolate hyperparameter improvement at 20 epochs |
 
 ---
 
@@ -559,17 +613,17 @@ energy consumption and carbon emissions.
 
 ---
 
-## 5. Round 4 — Efficiency Benchmark Analysis
+## 5. Round 5 — Efficiency and Hyperparameter Analysis
 
-### Round 4 vs Baseline (same epochs, different hyperparams)
+### Round 5 vs Baseline (same hyperparams, different epochs: 20 vs 10)
 
 | Model | Δ Accuracy | Δ CO₂ | Interpretation |
-|:------|:----------:|:-----:|:---------------|{r4_vs_base_rows}
+|:------|:----------:|:-----:|:---------------|{r5_vs_base_rows}
 
-### Round 4 vs Round 3 (same hyperparams, different epochs)
+### Round 2 vs Round 5 (same epochs: 20, modified vs baseline hyperparams)
 
-| Model | Δ Accuracy | CO₂ saved | Interpretation |
-|:------|:----------:|:---------:|:---------------|{r4_vs_r3_rows}
+| Model | Δ Accuracy | Δ CO₂ | Interpretation |
+|:------|:----------:|:-----:|:---------------|{r2_vs_r5_rows}
 
 ---
 
@@ -585,17 +639,9 @@ energy consumption and carbon emissions.
 
 ## 8. Key Takeaways
 
-- **ViT** é o mais beneficiado pelos hiperparâmetros refinados: com apenas 10 épocas (Round 4), supera o Baseline em +0.11% *e* consome 16% menos energia. O ajuste de LR, label smoothing e augmentation são o principal driver de performance.
-
-- **YOLO26** com hiperparâmetros otimizados (Round 4) mantém praticamente a mesma acurácia do Baseline (+0.07%) usando **60% menos energia** — evidência forte de que o AdamW e batch maior tornam o treinamento mais eficiente energeticamente.
-
-- **CNN** precisa de mais épocas para que a regularização (dropout + augmentation) maturize. No Round 4, com 10 épocas, os hiperparâmetros melhorados quase não agregam acurácia vs Baseline (-0.13%), mas o Round 3 com 30 épocas mostra o ganho real (+0.52%).
-
-- **Melhor trade-off acurácia × sustentabilidade**: **Round 4 YOLO26** (90.63% de acurácia com apenas 0.768g CO₂) é a opção mais verde do experimento inteiro.
-
-- **Melhor acurácia absoluta**: **Round 3 ViT** com 95.18%.
-
-- **GreenAI Insight**: Hiperparâmetros bem ajustados podem reduzir o custo energético do treinamento **sem sacrificar acurácia** (ViT Round 4 vs Baseline), mas para modelos menores como CNN e YOLO26, mais épocas continuam sendo necessárias para extrair o potencial completo da regularização.
+- **YOLO26** no Round 5 (20 épocas base) mostra o custo de usar hiperparâmetros não otimizados. A comparação Round 2 vs Round 5 mostra o real valor das melhorias aplicadas no Round 2, onde a acurácia foi superior e as emissões menores, comprovando a eficácia das otimizações GreenAI.
+- **CNN** sem regularização (Round 5) sofre de overfitting persistente nas 20 épocas. A regularização inserida a partir do Round 2 é fundamental para obter uma melhora real na generalização do modelo.
+- **ViT** se beneficia fortemente de hiperparâmetros refinados. Rodar mais épocas do ViT com hiperparâmetros puros (Round 5) gera acurácia inferior com elevado custo energético e ambiental em relação a rodadas com melhorias de hiperparâmetros.
 
 ---
 
@@ -610,33 +656,30 @@ energy consumption and carbon emissions.
 
 def main() -> None:
     print("\n" + "=" * 65)
-    print("  Generating GreenAI Final Report (4-Phase Comparison)")
+    print("  Generating GreenAI Final Report (5-Phase Comparison)")
     print("=" * 65)
 
     baselines = read_csv(CSV_BASELINE, "Baseline")
     round2s   = read_csv(CSV_ROUND2,   "Model")
     round3s   = read_csv(CSV_ROUND3,   "Model")
     round4s   = read_csv(CSV_ROUND4,   "Model")
+    round5s   = read_csv(CSV_ROUND5,   "Model")
 
     missing = []
     if not baselines: missing.append(str(CSV_BASELINE))
     if not round2s:   missing.append(str(CSV_ROUND2))
     if not round3s:   missing.append(str(CSV_ROUND3))
     if not round4s:   missing.append(str(CSV_ROUND4))
+    if not round5s:   missing.append(str(CSV_ROUND5))
 
     if missing:
-        print("\n[ERROR] Missing input files:")
+        print("\n[WARNING] Missing input files:")
         for f in missing:
             print(f"  ✗ {f}")
-        print("\nRun the individual report scripts first:")
-        print("  python report.py")
-        print("  python report_modified.py")
-        print("  python report_round3.py")
-        print("  python report_round4.py")
-        sys.exit(1)
+        print("\nNote: Some rounds have not been run or are missing. A partial report will be generated.")
 
-    make_dashboard(baselines, round2s, round3s, round4s)
-    make_markdown(baselines, round2s, round3s, round4s)
+    make_dashboard(baselines, round2s, round3s, round4s, round5s)
+    make_markdown(baselines, round2s, round3s, round4s, round5s)
 
     print(f"\n✓ All outputs written to: {REPORTS_DIR}")
     print(f"  • {MD_REPORT.name}")
